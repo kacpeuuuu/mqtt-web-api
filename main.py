@@ -11,6 +11,8 @@ brokerPort = int(os.getenv("BROKER_PORT"))
 brokerKeepAlive = int(os.getenv("KEEP_ALIVE"))
 mqttClient = MqttWrapper(brokerAddress, brokerPort, brokerKeepAlive)
 
+sensors = {}
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
@@ -37,6 +39,12 @@ def read_root(request: Request):
 @app.get("/devices/report")
 async def get_devices(request: Request):
     mqttClient.get_report()
-    topics = mqttClient.sensorTopics
-    print(f"TOPICS: {topics}")
-    return templates.TemplateResponse(request, "report.html", {"request": request, "conetnt": topics})
+    sensors = mqttClient.sensorTopics
+    print(f"TOPICS: {sensors}")
+    
+    # Zmieniono klucz z "conetnt" na "topics"
+    return templates.TemplateResponse(
+        request, 
+        "report.html", 
+        {"request": request, "topics": sensors} 
+    )

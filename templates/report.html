@@ -8,5 +8,11 @@
 </head>
 <body>
     <p>bleble</p>
-<body>
+    <ul>
+        {# Dodano .items() na końcu zmiennej topics #}
+        {% for key, value in topics.items() %}
+            <li>{{ key }}: {{ value }}</li>
+        {% endfor %}
+    </ul>
+</body> <!-- Poprawiono literówkę z <body> na </body> -->
 </html>
