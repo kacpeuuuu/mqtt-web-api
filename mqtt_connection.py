@@ -44,7 +44,6 @@ class MqttWrapper:
     def get_report(self):
         self.publish_on_topic("devices/report", "Request: report", 1)
         print("Requested report from devices.")
-        time.sleep(2)
         
     def _get_report(self):
         print("report_ready")
