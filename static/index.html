@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP Sensors Live Dashboard</title>
+</head>
+<body>
+    <div id="sensors-containter">
+        <script>
+            const wsUrl = "ws://192.168.50.11:8000/ws/ping-pong";
+            const websocket = new WebSocket(wsUrl);
+            const div = document.getElementById('sensors-containter');
+            
+            websocket.addEventListener("open", () => {
+                console.log("CONNECTED");
+                pingInterval = setInterval(() => {
+                    websocket.send("ping");
+                }, 1000);
+            })
+            
+            websocket.addEventListener("error", (e) => {
+                log(`ERROR`);
+            });
+            
+            websocket.addEventListener("message", (event) => {
+                console.log("SERVER REPLIED:", event.data);
+                var newH1 = document.createElement("h1");
+                newH1.innerHTML = event.data;
+                div.append(newH1);
+
+            });
+
+        </script>
+    </div>
+</body>
+</html>

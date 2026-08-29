@@ -14,122 +14,122 @@ mqttClient = MqttWrapper(brokerAddress, brokerPort, brokerKeepAlive)
 
 sensors = {}
 
-html = """
-<!DOCTYPE html>
-<html>
-<head>
-    <title>ESP Dashboard</title>
-    <style>
-        body { 
-            font-family: sans-serif; 
-            padding: 20px; 
-            background-color: #f0f2f5; 
-        }
-        h1 {
-            color: #333;
-            margin-bottom: 30px;
-        }
-        /* CSS Grid Magic for automatic tile spacing */
-        .tile-container { 
-            display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); 
-            gap: 20px; 
-        }
-        .tile { 
-            background: #ffffff; 
-            padding: 20px; 
-            border-radius: 8px; 
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
-        }
-        .tile h3 { 
-            font-size: 14px; 
-            color: #555;
-            word-break: break-all; 
-            margin-top: 0;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 10px;
-        }
-        .value { 
-            font-size: 16px; 
-            color: #007bff; 
-            margin-top: 10px; 
-            line-height: 1.6;
-        }
-    </style>
-</head>
-<body>
-    <h1>ESP Sensors Live Dashboard</h1>
+# html = """
+# <!DOCTYPE html>
+# <html>
+# <head>
+#     <title>ESP Dashboard</title>
+#     <style>
+#         body { 
+#             font-family: sans-serif; 
+#             padding: 20px; 
+#             background-color: #f0f2f5; 
+#         }
+#         h1 {
+#             color: #333;
+#             margin-bottom: 30px;
+#         }
+#         /* CSS Grid Magic for automatic tile spacing */
+#         .tile-container { 
+#             display: grid; 
+#             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); 
+#             gap: 20px; 
+#         }
+#         .tile { 
+#             background: #ffffff; 
+#             padding: 20px; 
+#             border-radius: 8px; 
+#             box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+#         }
+#         .tile h3 { 
+#             font-size: 14px; 
+#             color: #555;
+#             word-break: break-all; 
+#             margin-top: 0;
+#             border-bottom: 1px solid #eee;
+#             padding-bottom: 10px;
+#         }
+#         .value { 
+#             font-size: 16px; 
+#             color: #007bff; 
+#             margin-top: 10px; 
+#             line-height: 1.6;
+#         }
+#     </style>
+# </head>
+# <body>
+#     <h1>ESP Sensors Live Dashboard</h1>
     
-    <!-- The crucial id="dashboard" is right here! -->
-    <div class="tile-container" id="dashboard"></div>
+#     <!-- The crucial id="dashboard" is right here! -->
+#     <div class="tile-container" id="dashboard"></div>
 
-    <script>
-        const wsUrl = "ws://" + window.location.host + "/ws";
-        const ws = new WebSocket(wsUrl);
+#     <script>
+#         const wsUrl = "ws://" + window.location.host + "/ws";
+#         const ws = new WebSocket(wsUrl);
 
-        ws.onopen = function() {
-            console.log("Connected to WebSocket!");
-        };
+#         ws.onopen = function() {
+#             console.log("Connected to WebSocket!");
+#         };
 
-        ws.onerror = function(error) {
-            console.error("WebSocket Error: ", error);
-        };
+#         ws.onerror = function(error) {
+#             console.error("WebSocket Error: ", error);
+#         };
 
-        ws.onmessage = function(event) {
-            const sensorData = JSON.parse(event.data);
-            const dashboard = document.getElementById("dashboard");
+#         ws.onmessage = function(event) {
+#             const sensorData = JSON.parse(event.data);
+#             const dashboard = document.getElementById("dashboard");
 
-            for (const [topic, rawValue] of Object.entries(sensorData)) {
+#             for (const [topic, rawValue] of Object.entries(sensorData)) {
                 
-                // 1. Clean the topic name to make a safe HTML ID (replaces / and {} with dashes)
-                const safeId = topic.replace(/[^a-zA-Z0-9]/g, '-');
+#                 // 1. Clean the topic name to make a safe HTML ID (replaces / and {} with dashes)
+#                 const safeId = topic.replace(/[^a-zA-Z0-9]/g, '-');
                 
-                // 2. Parse the inner JSON string into a readable object
-                let deviceData;
-                try {
-                    deviceData = JSON.parse(rawValue);
-                } catch (e) {
-                    deviceData = { raw: rawValue }; // Fallback if it fails to parse
-                }
+#                 // 2. Parse the inner JSON string into a readable object
+#                 let deviceData;
+#                 try {
+#                     deviceData = JSON.parse(rawValue);
+#                 } catch (e) {
+#                     deviceData = { raw: rawValue }; // Fallback if it fails to parse
+#                 }
 
-                // 3. Format how you want the text to look on the tile
-                let displayText = "";
-                if (deviceData.deviceIdentifier !== undefined) {
-                    displayText = `
-                        <div><strong>ID:</strong> ${deviceData.deviceIdentifier}</div>
-                        <div><strong>Type:</strong> ${deviceData.deviceTypeId}</div>
-                        <div><strong>Pin:</strong> ${deviceData.devicePin}</div>
-                    `;
-                } else {
-                    // Fallback just in case the data structure changes later
-                    displayText = `<div>${deviceData.raw || rawValue}</div>`;
-                }
+#                 // 3. Format how you want the text to look on the tile
+#                 let displayText = "";
+#                 if (deviceData.deviceIdentifier !== undefined) {
+#                     displayText = `
+#                         <div><strong>ID:</strong> ${deviceData.deviceIdentifier}</div>
+#                         <div><strong>Type:</strong> ${deviceData.deviceTypeId}</div>
+#                         <div><strong>Pin:</strong> ${deviceData.devicePin}</div>
+#                     `;
+#                 } else {
+#                     // Fallback just in case the data structure changes later
+#                     displayText = `<div>${deviceData.raw || rawValue}</div>`;
+#                 }
 
-                let valueElement = document.getElementById(safeId);
+#                 let valueElement = document.getElementById(safeId);
 
-                // 4. Draw or update the tile
-                if (!valueElement) {
-                    const newTile = document.createElement("div");
-                    newTile.className = "tile";
+#                 // 4. Draw or update the tile
+#                 if (!valueElement) {
+#                     const newTile = document.createElement("div");
+#                     newTile.className = "tile";
                     
-                    // Display the full topic as the title, and the data inside
-                    newTile.innerHTML = `
-                        <h3>${topic}</h3>
-                        <div class="value" id="${safeId}">
-                            ${displayText}
-                        </div>
-                    `;
+#                     // Display the full topic as the title, and the data inside
+#                     newTile.innerHTML = `
+#                         <h3>${topic}</h3>
+#                         <div class="value" id="${safeId}">
+#                             ${displayText}
+#                         </div>
+#                     `;
                     
-                    dashboard.appendChild(newTile);
-                } else {
-                    valueElement.innerHTML = displayText;
-                }
-            }
-        };
-    </script>
-</body>
-</html>
-"""
+#                     dashboard.appendChild(newTile);
+#                 } else {
+#                     valueElement.innerHTML = displayText;
+#                 }
+#             }
+#         };
+#     </script>
+# </body>
+# </html>
+# """
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -147,16 +147,15 @@ app = FastAPI(lifespan = lifespan)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
-@app.get("/")
-async def get():
-    return HTMLResponse(content=html)
+# @app.get("/")
+# async def get():
+#     return HTMLResponse(content=html)
 
 @app.get("/devices/report")
 async def get_devices(request: Request):
     mqttClient.get_report()
     sensors = mqttClient.sensorTopics
-    print(f"TOPICS: {sensors}")
-    return sensors
+    return {"topics": sensors}
 
 
 @app.websocket("/ws")
@@ -179,3 +178,22 @@ async def websocket_endpoint(websocket: WebSocket):
             
     except Exception as e:
         print("User closed the dashboard.")
+
+@app.websocket("/ws/ping-pong")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+
+    while True:
+        try:
+            data = await websocket.receive_text()
+            print(f"Recieved from client: {data}")
+
+            if data == "ping":
+                await websocket.send_text("pong")
+
+        except Exception as e:
+            print(f"EXCEPTION!: {e}")
+            break
+
+
+app.mount("/", StaticFiles(directory="static", html=True), name="static")
