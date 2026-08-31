@@ -7,7 +7,12 @@ class MqttWrapper:
         self.address = address
         self.port = port
         self.keepAlive = keepAlive
-        self.sensorTopics = {}
+        self.sensorTopics = {   #DUMMY DATA
+            "devices/report/12:A1:E6:FC:D7:CD": '{"deviceIdentifier":0,"deviceTypeId":1,"devicePin":0}',
+            "devices/report/34:B2:F7:FC:D7:CD": '{"deviceIdentifier":0,"deviceTypeId":1,"devicePin":0}',
+            "devices/report/56:C3:G8:FC:D7:CD": '{"deviceIdentifier":0,"deviceTypeId":1,"devicePin":0}',
+            "devices/report/78:D4:H8:FC:D7:CD": '{"deviceIdentifier":0,"deviceTypeId":1,"devicePin":0}',
+        }
         self.isConnected = False
 
         self.mqttClient = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2) 

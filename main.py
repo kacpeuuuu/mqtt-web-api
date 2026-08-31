@@ -4,6 +4,7 @@ from fastapi import FastAPI, Request, WebSocket
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from mqtt_connection import MqttWrapper
+from fastapi import WebSocketDisconnect
 #from enum import Enum
 import os
 
@@ -155,6 +156,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 async def get_devices(request: Request):
     mqttClient.get_report()
     sensors = mqttClient.sensorTopics
+    print({"topics": sensors})
     return {"topics": sensors}
 
 
@@ -176,24 +178,12 @@ async def websocket_endpoint(websocket: WebSocket):
             # (This prevents overloading the browser and server)
             await asyncio.sleep(0.5) 
             
-    except Exception as e:
+    except WebSocketDisconnect:
         print("User closed the dashboard.")
 
-@app.websocket("/ws/ping-pong")
-async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
+    except Exception as e:
+        print(f"Error: {e}")
 
-    while True:
-        try:
-            data = await websocket.receive_text()
-            print(f"Recieved from client: {data}")
-
-            if data == "ping":
-                await websocket.send_text("pong")
-
-        except Exception as e:
-            print(f"EXCEPTION!: {e}")
-            break
 
 
 app.mount("/", StaticFiles(directory="static", html=True), name="static")

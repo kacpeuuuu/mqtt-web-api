@@ -8,29 +8,31 @@
 <body>
     <div id="sensors-containter">
         <script>
-            const wsUrl = "ws://192.168.50.11:8000/ws/ping-pong";
+            const wsUrl = "ws://192.168.50.11:8000/ws";
             const websocket = new WebSocket(wsUrl);
             const div = document.getElementById('sensors-containter');
             
             websocket.addEventListener("open", () => {
-                console.log("CONNECTED");
-                pingInterval = setInterval(() => {
-                    websocket.send("ping");
-                }, 1000);
-            })
+                console.log("CONNECTED websocket to server");
+            });
             
+            websocket.addEventListener("close", () => {
+                console.log("DISCONNECTED websocket from server");
+            });
+
             websocket.addEventListener("error", (e) => {
-                log(`ERROR`);
+                console.log('ERROR');
             });
-            
+
             websocket.addEventListener("message", (event) => {
-                console.log("SERVER REPLIED:", event.data);
-                var newH1 = document.createElement("h1");
-                newH1.innerHTML = event.data;
-                div.append(newH1);
+                console.log("MESSAGE RECEIVED");
+                const sensors_arr = JSON.parse(event.data);
 
-            });
-
+                for (const key in sensors_arr) 
+                {
+                    console.log(`${key}: ${sensors_arr[key]}`);
+                }
+            })
         </script>
     </div>
 </body>
