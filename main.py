@@ -7,6 +7,7 @@ from mqtt_connection import MqttWrapper
 from fastapi import WebSocketDisconnect
 #from enum import Enum
 import os
+import json
 
 brokerAddress = str(os.getenv("BROKER_ADDRESS", ""))
 brokerPort = int(os.getenv("BROKER_PORT", 1883))
@@ -14,123 +15,6 @@ brokerKeepAlive = int(os.getenv("KEEP_ALIVE", 60))
 mqttClient = MqttWrapper(brokerAddress, brokerPort, brokerKeepAlive)
 
 sensors = {}
-
-# html = """
-# <!DOCTYPE html>
-# <html>
-# <head>
-#     <title>ESP Dashboard</title>
-#     <style>
-#         body { 
-#             font-family: sans-serif; 
-#             padding: 20px; 
-#             background-color: #f0f2f5; 
-#         }
-#         h1 {
-#             color: #333;
-#             margin-bottom: 30px;
-#         }
-#         /* CSS Grid Magic for automatic tile spacing */
-#         .tile-container { 
-#             display: grid; 
-#             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); 
-#             gap: 20px; 
-#         }
-#         .tile { 
-#             background: #ffffff; 
-#             padding: 20px; 
-#             border-radius: 8px; 
-#             box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
-#         }
-#         .tile h3 { 
-#             font-size: 14px; 
-#             color: #555;
-#             word-break: break-all; 
-#             margin-top: 0;
-#             border-bottom: 1px solid #eee;
-#             padding-bottom: 10px;
-#         }
-#         .value { 
-#             font-size: 16px; 
-#             color: #007bff; 
-#             margin-top: 10px; 
-#             line-height: 1.6;
-#         }
-#     </style>
-# </head>
-# <body>
-#     <h1>ESP Sensors Live Dashboard</h1>
-    
-#     <!-- The crucial id="dashboard" is right here! -->
-#     <div class="tile-container" id="dashboard"></div>
-
-#     <script>
-#         const wsUrl = "ws://" + window.location.host + "/ws";
-#         const ws = new WebSocket(wsUrl);
-
-#         ws.onopen = function() {
-#             console.log("Connected to WebSocket!");
-#         };
-
-#         ws.onerror = function(error) {
-#             console.error("WebSocket Error: ", error);
-#         };
-
-#         ws.onmessage = function(event) {
-#             const sensorData = JSON.parse(event.data);
-#             const dashboard = document.getElementById("dashboard");
-
-#             for (const [topic, rawValue] of Object.entries(sensorData)) {
-                
-#                 // 1. Clean the topic name to make a safe HTML ID (replaces / and {} with dashes)
-#                 const safeId = topic.replace(/[^a-zA-Z0-9]/g, '-');
-                
-#                 // 2. Parse the inner JSON string into a readable object
-#                 let deviceData;
-#                 try {
-#                     deviceData = JSON.parse(rawValue);
-#                 } catch (e) {
-#                     deviceData = { raw: rawValue }; // Fallback if it fails to parse
-#                 }
-
-#                 // 3. Format how you want the text to look on the tile
-#                 let displayText = "";
-#                 if (deviceData.deviceIdentifier !== undefined) {
-#                     displayText = `
-#                         <div><strong>ID:</strong> ${deviceData.deviceIdentifier}</div>
-#                         <div><strong>Type:</strong> ${deviceData.deviceTypeId}</div>
-#                         <div><strong>Pin:</strong> ${deviceData.devicePin}</div>
-#                     `;
-#                 } else {
-#                     // Fallback just in case the data structure changes later
-#                     displayText = `<div>${deviceData.raw || rawValue}</div>`;
-#                 }
-
-#                 let valueElement = document.getElementById(safeId);
-
-#                 // 4. Draw or update the tile
-#                 if (!valueElement) {
-#                     const newTile = document.createElement("div");
-#                     newTile.className = "tile";
-                    
-#                     // Display the full topic as the title, and the data inside
-#                     newTile.innerHTML = `
-#                         <h3>${topic}</h3>
-#                         <div class="value" id="${safeId}">
-#                             ${displayText}
-#                         </div>
-#                     `;
-                    
-#                     dashboard.appendChild(newTile);
-#                 } else {
-#                     valueElement.innerHTML = displayText;
-#                 }
-#             }
-#         };
-#     </script>
-# </body>
-# </html>
-# """
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -148,6 +32,7 @@ app = FastAPI(lifespan = lifespan)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
+
 # @app.get("/")
 # async def get():
 #     return HTMLResponse(content=html)
@@ -155,9 +40,43 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 @app.get("/devices/report")
 async def get_devices(request: Request):
     mqttClient.get_report()
-    sensors = mqttClient.sensorTopics
+    await asyncio.sleep(0.5) 
+
+    sensors = mqttClient.sensorMac
     print({"topics": sensors})
     return {"topics": sensors}
+
+@app.get("/devices/{device_mac}")
+async def get_device(device_mac: str):
+    mqttClient.get_report()
+    await asyncio.sleep(0.5) 
+    sensors = mqttClient.sensorMac
+    return sensors[f"{device_mac}"]
+
+@app.put("/devices/{device_mac}/changeDevicePin")
+async def set_device(device_mac: str, devicePin: int):
+    json_content = {"devicePin": devicePin}
+    mqttClient.publish_on_topic(f"devices/{device_mac}/changeDevicePin", json.dumps(json_content), 1)
+
+    mqttClient.get_report()
+    await asyncio.sleep(0.5) 
+    sensors = mqttClient.sensorMac
+    try:
+        sensors[f"{device_mac}"]
+
+    except:
+        return None
+    
+    return sensors[f"{device_mac}"]
+
+@app.put("/devices/{device_mac}/enableDevice")
+async def enable_device(device_mac: str, duration: int):
+    json_content = {"duration": duration}
+    mqttClient.publish_on_topic(f"devices/{device_mac}/enableDevice", json.dumps(json_content), 1)
+
+@app.put("/devices/{device_mac}/disableDevice")
+async def disable_device(device_mac: str):
+    mqttClient.publish_on_topic(f"devices/{device_mac}/disableDevice", "disable", 1)
 
 
 @app.websocket("/ws")
@@ -169,13 +88,12 @@ async def websocket_endpoint(websocket: WebSocket):
         while True:
             # Grab the latest dictionary from your wrapper
             mqttClient.get_report()
-            current_data = mqttClient.sensorTopics 
+            current_data = mqttClient.sensorMac 
             
             # Send the entire dictionary to the frontend as a JSON object
             await websocket.send_json(current_data)
             
-            # Pause for 0.5 seconds before sending the next update
-            # (This prevents overloading the browser and server)
+
             await asyncio.sleep(0.5) 
             
     except WebSocketDisconnect:

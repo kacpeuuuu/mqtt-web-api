@@ -7,11 +7,11 @@ class MqttWrapper:
         self.address = address
         self.port = port
         self.keepAlive = keepAlive
-        self.sensorTopics = {   #DUMMY DATA
-            "devices/report/12:A1:E6:FC:D7:CD": '{"deviceIdentifier":0,"deviceTypeId":1,"devicePin":0}',
-            "devices/report/34:B2:F7:FC:D7:CD": '{"deviceIdentifier":0,"deviceTypeId":1,"devicePin":0}',
-            "devices/report/56:C3:G8:FC:D7:CD": '{"deviceIdentifier":0,"deviceTypeId":1,"devicePin":0}',
-            "devices/report/78:D4:H8:FC:D7:CD": '{"deviceIdentifier":0,"deviceTypeId":1,"devicePin":0}',
+        self.sensorMac = {   #DUMMY DATA
+            "12:A1:E6:FC:D7:CD": '{"deviceIdentifier":0,"deviceTypeId":1,"devicePin":0}',
+            "34:B2:F7:FC:D7:CD": '{"deviceIdentifier":0,"deviceTypeId":1,"devicePin":0}',
+            "56:C3:G8:FC:D7:CD": '{"deviceIdentifier":0,"deviceTypeId":1,"devicePin":0}',
+            "78:D4:H8:FC:D7:CD": '{"deviceIdentifier":0,"deviceTypeId":1,"devicePin":0}',
         }
         self.isConnected = False
 
@@ -55,9 +55,9 @@ class MqttWrapper:
 
     def on_sensor_report(self, client : mqtt.Client , userdata, msg : mqtt.MQTTMessage):
         print(f"APPENDED SENSOR: \t{msg.topic} to the list")
-        
+        sensor_mac_addr = str(msg.topic[15:])
         string_text = msg.payload.decode('utf-8', errors="ignore")
-        self.sensorTopics[str(msg.topic)] = str(string_text)
+        self.sensorMac[sensor_mac_addr] = str(string_text)
         self._get_report()
 
 
