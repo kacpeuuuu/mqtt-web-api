@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="./css/style.css">
     <title>ESP Sensors Live Dashboard</title>
 </head>
 <body>
@@ -12,6 +13,7 @@
             const websocket = new WebSocket(wsUrl);
             const div = document.getElementById('sensors-containter');
             
+
             websocket.addEventListener("open", () => {
                 console.log("CONNECTED websocket to server");
             });
@@ -28,11 +30,49 @@
                 console.log("MESSAGE RECEIVED");
                 const sensors_arr = JSON.parse(event.data);
 
-                for (const key in sensors_arr) 
-                {
-                    console.log(`${key}: ${sensors_arr[key]}`);
+                for (const key in sensors_arr) {
+                    let innerMessage = JSON.parse(sensors_arr[key]);
+                    createSensorDiv(key, innerMessage);
+                    console.log(key);
+                    console.log(innerMessage);
                 }
             })
+
+            function createSensorDiv(mac_addr, json_body) 
+            {    
+                if (!document.getElementById(mac_addr)) 
+                {
+                    var sensorDiv = document.createElement('div');
+                
+                    sensorDiv.className = "sensorDiv";
+                    sensorDiv.id = mac_addr;
+
+                    if ("devicePin" in json_body) {
+                        console.log("1");
+                        var devicePinParagraph = document.createElement("p");
+                        devicePinParagraph.innerHTML = "Pin: " + json_body.devicePin;
+                        sensorDiv.append(devicePinParagraph);
+                    }
+
+                    if ("isRunning" in json_body) {
+                        console.log("2");
+                        var isRunningParagraph = document.createElement("p");
+                        isRunningParagraph.innerHTML = "isRunning: " + json_body.isRunning;
+                        sensorDiv.append(isRunningParagraph);
+                    }
+
+                    if ("durationLeft" in json_body) {
+                        console.log("3");
+                        var durationLeftParagraph = document.createElement("p");
+                        durationLeftParagraph.innerHTML = "durationLeft: " + json_body.durationLeft;
+                        sensorDiv.append(durationLeftParagraph);
+                    }
+
+                    document.body.append(sensorDiv);
+                }
+            }
+
+
         </script>
     </div>
 </body>
