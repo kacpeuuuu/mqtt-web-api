@@ -1,7 +1,8 @@
 import paho.mqtt.client as mqtt
 import time
 
-
+#TODO
+#MAKE HEARTBEAT 
 class MqttWrapper:
     def __init__(self, address : str, port=1883, keepAlive=60):
         self.address = address
@@ -89,4 +90,11 @@ class MqttWrapper:
         
     def loop_forever(self):
         self.mqttClient.loop_forever()
+        
+    def on_disconnect(self, client : mqtt.Client, userdata, disconnect_flags, reason_code, properties):
+        print("disconnected")
+        print(f"client: {client}, userdata: {userdata}, disconnect_flags: {disconnect_flags}, reason_code: {reason_code}, properties: {properties}")
+
+
+
     

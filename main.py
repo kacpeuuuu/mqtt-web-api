@@ -8,12 +8,14 @@ from fastapi import WebSocketDisconnect
 #from enum import Enum
 import os
 import json
+import time
 
 brokerAddress = str(os.getenv("BROKER_ADDRESS", ""))
 brokerPort = int(os.getenv("BROKER_PORT", 1883))
 brokerKeepAlive = int(os.getenv("KEEP_ALIVE", 60))
 mqttClient = MqttWrapper(brokerAddress, brokerPort, brokerKeepAlive)
 
+print(brokerKeepAlive)
 sensors = {}
 
 @asynccontextmanager
@@ -45,6 +47,11 @@ async def get_devices(request: Request):
     sensors = mqttClient.sensorMac
     print({"topics": sensors})
     return {"topics": sensors}
+
+@app.get("/heartbeat")
+async def heartbeat():
+    return {"time": time.time()}
+
 
 @app.get("/devices/{device_mac}")
 async def get_device(device_mac: str):
