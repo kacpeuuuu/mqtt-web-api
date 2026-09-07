@@ -61,7 +61,7 @@ async def get_device(device_mac: str):
     return sensors[f"{device_mac}"]
 
 @app.put("/devices/{device_mac}/changeDevicePin")
-async def set_device(device_mac: str, devicePin: int):
+async def set_device_pin(device_mac: str, devicePin: int):
     json_content = {"devicePin": devicePin}
     mqttClient.publish_on_topic(f"devices/{device_mac}/changeDevicePin", json.dumps(json_content), 1)
 
@@ -69,17 +69,34 @@ async def set_device(device_mac: str, devicePin: int):
     await asyncio.sleep(0.5) 
     sensors = mqttClient.sensorMac
     try:
-        sensors[f"{device_mac}"]
+        result = sensors[f"{device_mac}"]
 
     except:
         return None
     
-    return sensors[f"{device_mac}"]
+    return result
+
+@app.put("/devices/{device_mac}/changeDeviceTypeId")
+async def set_device_type_id(device_mac: str, deviceTypeId):
+    json_content = {"deviceTypeId": deviceTypeId}
+    mqttClient.publish_on_topic(f"/devices/{device_mac}/changeDeviceTypeId", json.dumps(json_content), 1)
+    mqttClient.get_report()
+    await asyncio.sleep(0.5) 
+    sensors = mqttClient.sensorMac
+    try:
+        result = sensors[f"{device_mac}"]
+
+    except:
+        return None
+    
+    return result
+    
 
 @app.put("/devices/{device_mac}/enableDevice")
 async def enable_device(device_mac: str, duration: int):
     json_content = {"duration": duration}
     mqttClient.publish_on_topic(f"devices/{device_mac}/enableDevice", json.dumps(json_content), 1)
+    
 
 @app.put("/devices/{device_mac}/disableDevice")
 async def disable_device(device_mac: str):
@@ -95,13 +112,13 @@ async def websocket_endpoint(websocket: WebSocket):
         while True:
             # Grab the latest dictionary from your wrapper
             mqttClient.get_report()
+            await asyncio.sleep(0.5) 
             current_data = mqttClient.sensorMac 
             
             # Send the entire dictionary to the frontend as a JSON object
             await websocket.send_json(current_data)
             
 
-            await asyncio.sleep(0.5) 
             
     except WebSocketDisconnect:
         print("User closed the dashboard.")

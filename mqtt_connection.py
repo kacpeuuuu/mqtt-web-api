@@ -4,16 +4,14 @@ import time
 #TODO
 #MAKE HEARTBEAT 
 class MqttWrapper:
-    def __init__(self, address : str, port=1883, keepAlive=60):
+    def __init__(self, address : str, port=1883, keepAlive=60, sensorMessageTimeout=5):
         self.address = address
         self.port = port
         self.keepAlive = keepAlive
-        self.sensorMac = {   #DUMMY DATA
-            "12:A1:E6:FC:D7:CD": '{"deviceIdentifier":0,"deviceTypeId":1,"devicePin":0}',
-            "34:B2:F7:FC:D7:CD": '{"deviceIdentifier":0,"deviceTypeId":1,"devicePin":0}',
-            "56:C3:G8:FC:D7:CD": '{"deviceIdentifier":0,"deviceTypeId":1,"devicePin":0}',
-            "78:D4:H8:FC:D7:CD": '{"deviceIdentifier":0,"deviceTypeId":1,"devicePin":0}',
-        }
+        self.sensorMac = {}
+        self.sensorMessageTimestamp = {}
+        self.sensorMessageTimeout = sensorMessageTimeout
+
         self.isConnected = False
 
         self.mqttClient = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2) 
@@ -59,7 +57,23 @@ class MqttWrapper:
         sensor_mac_addr = str(msg.topic[15:])
         string_text = msg.payload.decode('utf-8', errors="ignore")
         self.sensorMac[sensor_mac_addr] = str(string_text)
+        self.sensorMessageTimestamp[sensor_mac_addr] = time.time()
+        self._remove_unresponsive_devices()
         self._get_report()
+
+
+    def _remove_unresponsive_devices(self):
+        nowTime = time.time()
+        itemsToDelete = []
+        if self.sensorMessageTimestamp == {}:
+            pass
+
+        for key,lastMessageTime in self.sensorMessageTimestamp.items():
+            if (nowTime - lastMessageTime) >= self.sensorMessageTimeout:
+                itemsToDelete.append(key)
+
+        for key in itemsToDelete:
+            self.sensorMac.pop(key)
 
 
     def publish_on_topic(self, topic: str, message: str, qos: int):
