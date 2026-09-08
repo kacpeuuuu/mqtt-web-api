@@ -1,5 +1,6 @@
 import paho.mqtt.client as mqtt
 import time
+import logging
 
 #TODO
 #MAKE HEARTBEAT 
@@ -9,8 +10,10 @@ class MqttWrapper:
         self.port = port
         self.keepAlive = keepAlive
         self.sensorMac = {}
+        self.sensorsTimedOut = []
         self.sensorMessageTimestamp = {}
         self.sensorMessageTimeout = sensorMessageTimeout
+
 
         self.isConnected = False
 
@@ -46,7 +49,9 @@ class MqttWrapper:
             print(f"Error during disconnecting: {e}")
 
     def get_report(self):
+        print("get_report()")
         self.publish_on_topic("devices/report", "Request: report", 1)
+        self._remove_unresponsive_devices()
         print("Requested report from devices.")
         
     def _get_report(self):
@@ -58,7 +63,7 @@ class MqttWrapper:
         string_text = msg.payload.decode('utf-8', errors="ignore")
         self.sensorMac[sensor_mac_addr] = str(string_text)
         self.sensorMessageTimestamp[sensor_mac_addr] = time.time()
-        self._remove_unresponsive_devices()
+        print(self.sensorMessageTimestamp)
         self._get_report()
 
 
@@ -67,13 +72,21 @@ class MqttWrapper:
         itemsToDelete = []
         if self.sensorMessageTimestamp == {}:
             pass
-
+        print("looking for a fugitive")
         for key,lastMessageTime in self.sensorMessageTimestamp.items():
             if (nowTime - lastMessageTime) >= self.sensorMessageTimeout:
+                print(f"found timed out sensor: {key}")
                 itemsToDelete.append(key)
 
+
         for key in itemsToDelete:
-            self.sensorMac.pop(key)
+            if key in self.sensorMac:
+                self.sensorMac.pop(key)
+            # self.sensorMessageTimestamp.pop(key)
+            print("deleted sensor")
+
+        itemsToDelete = []
+        
 
 
     def publish_on_topic(self, topic: str, message: str, qos: int):

@@ -110,12 +110,13 @@ async def websocket_endpoint(websocket: WebSocket):
 
     try:
         while True:
-            # Grab the latest dictionary from your wrapper
+            # get the latest sensor dictionary from wrapper
             mqttClient.get_report()
-            await asyncio.sleep(0.5) 
+            await asyncio.sleep(3) 
             current_data = mqttClient.sensorMac 
+            print(f"sensormac: {mqttClient.sensorMac}")
             
-            # Send the entire dictionary to the frontend as a JSON object
+            # send the entire sensor dictionary to the frontend as a JSON object
             await websocket.send_json(current_data)
             
 
