@@ -12,7 +12,7 @@
             const wsUrl = "ws://192.168.50.11:8000/ws";
             const websocket = new WebSocket(wsUrl);
             const div = document.getElementById('sensorsContainter');
-            var lastJson;
+            var lastJson = "";
             
 
             websocket.addEventListener("open", () => {
@@ -28,36 +28,46 @@
             });
 
             websocket.addEventListener("message", (event) => {
-                console.log("MESSAGE RECEIVED");
                 const sensors_arr = JSON.parse(event.data);
                 const sensorsOnWebsite = document.body.getElementsByClassName("sensorDiv");
 
 
-                for (const key in sensors_arr) {
-                    const json_body = JSON.parse(sensors_arr[key]);
+                for (let key in sensors_arr) {
+                    let json_body = JSON.parse(sensors_arr[key]);
 
                     //TODO:
                     // if sensor is displayed on the website but is not present in the json, it means that it lost connection to the broker -> we remove it
                     // compare elements id, if is not present the isInJson stays false and deletes the element
 
-                    // its not implemented in mqtt_connection.py yet
 
                     createSensorDiv(key, json_body);
                     
                 
                 }
                 
-                if (lastJson != null) {
-                    console.log(lastJson);
+                
+                if (JSON.stringify(lastJson) !== JSON.stringify(sensors_arr)) {
+                    checkIfSensorDisconnected(lastJson, sensors_arr);
                 }
-                console.log(sensors_arr);
+                //console.log(sensors_arr);
                 
                 lastJson = sensors_arr;
-            })
+            });
 
-            function checkIfSensorDisconnected(json_body) {
+            function checkIfSensorDisconnected(previousJson, currentJson) 
+            {
 
+                for (let key in previousJson) 
+                {
+                    if (!(key in currentJson)) 
+                    { // check if key is not in current json
+                        console.log('deleting unresponsive sensor');
+                        var divToDelete = document.getElementById(CSS.escape(key));
+                        divToDelete.remove(); // delete unresponsive sensor
+                    }
+                }
             }
+            
 
             function createSensorDiv(mac_addr, json_body) 
             {    
@@ -73,7 +83,6 @@
                     sensorDiv.append(deviceMac);
 
                     if ("devicePin" in json_body) {
-                        console.log("1");
                         const devicePinParagraph = document.createElement("p");
                         devicePinParagraph.className = "pin";
                         devicePinParagraph.innerHTML = "Pin: " + json_body.devicePin;
@@ -81,7 +90,6 @@
                     }
 
                     if ("isRunning" in json_body) {
-                        console.log("2");
                         const isRunningParagraph = document.createElement("p");
                         isRunningParagraph.className = "isRunning";
                         isRunningParagraph.innerHTML = "isRunning: " + json_body.isRunning;
@@ -89,7 +97,6 @@
                     }
 
                     if ("durationLeft" in json_body) {
-                        console.log("3");
                         const durationLeftParagraph = document.createElement("p");
                         durationLeftParagraph.className = "durationLeft"
                         durationLeftParagraph.innerHTML = "durationLeft: " + json_body.durationLeft;
@@ -101,19 +108,24 @@
                 else {
                     const sensorDiv = document.getElementById(CSS.escape(mac_addr));
                     const paragraphs = sensorDiv.querySelectorAll("p");
+                    const paragraphsLength = paragraphs.length
                     
-                    if (paragraphs.length >= 1) {
-                        paragraphs[0].innerHTML = "Pin: " + json_body.devicePin;
-                    }
-
-                    if (paragraphs.length >= 2) 
-                    {
-                        paragraphs[1].innerHTML = "isRunning: " + json_body.isRunning;
-                    }
-
-                    if (paragraphs.length >= 3) 
-                    {
-                        paragraphs[2].innerHTML = "durationLeft: " + json_body.durationLeft;
+                    switch (paragraphs.length) {
+                        case 1:
+                            paragraphs[0].innerHTML = "Pin: " + json_body.devicePin;
+                            break;
+                        case 2:
+                            paragraphs[0].innerHTML = "Pin: " + json_body.devicePin;
+                            paragraphs[1].innerHTML = "isRunning: " + json_body.isRunning;
+                            break;
+                        case 3:
+                            paragraphs[0].innerHTML = "Pin: " + json_body.devicePin;
+                            paragraphs[1].innerHTML = "isRunning: " + json_body.isRunning;
+                            paragraphs[2].innerHTML = "durationLeft: " + json_body.durationLeft;
+                            break;
+                        default:
+                            console.log("ERROR: undefined number of paragraphs in sensorDiv:" + paragraphs.length);
+                            break;
                     }
                 }
             }

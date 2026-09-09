@@ -1,6 +1,7 @@
 import paho.mqtt.client as mqtt
 import time
 import logging
+import json
 
 #TODO
 #MAKE HEARTBEAT 
@@ -60,30 +61,33 @@ class MqttWrapper:
     def on_sensor_report(self, client : mqtt.Client , userdata, msg : mqtt.MQTTMessage):
         print(f"APPENDED SENSOR: \t{msg.topic} to the list")
         sensor_mac_addr = str(msg.topic[15:])
-        string_text = msg.payload.decode('utf-8', errors="ignore")
-        self.sensorMac[sensor_mac_addr] = str(string_text)
+        decoded_payload = msg.payload.decode('utf-8', errors="ignore")
+        # decoded_payload = json.loads(decoded_payload)     i should probably merge sensormessagetimestamp with 
+        # decoded_payload["lastMessage"] = time.time()
+        # print(f"decoded_payload: {decoded_payload}")
+        self.sensorMac[sensor_mac_addr] = decoded_payload
+        print(self.sensorMac)
         self.sensorMessageTimestamp[sensor_mac_addr] = time.time()
         print(self.sensorMessageTimestamp)
         self._get_report()
 
 
-    def _remove_unresponsive_devices(self):
+    def _remove_unresponsive_devices(self):     
         nowTime = time.time()
         itemsToDelete = []
         if self.sensorMessageTimestamp == {}:
             pass
-        print("looking for a fugitive")
+        
         for key,lastMessageTime in self.sensorMessageTimestamp.items():
             if (nowTime - lastMessageTime) >= self.sensorMessageTimeout:
-                print(f"found timed out sensor: {key}")
+                print(f"Found timed out sensor: {key}")
                 itemsToDelete.append(key)
 
 
         for key in itemsToDelete:
             if key in self.sensorMac:
                 self.sensorMac.pop(key)
-            # self.sensorMessageTimestamp.pop(key)
-            print("deleted sensor")
+                self.sensorMessageTimestamp.pop(key)
 
         itemsToDelete = []
         

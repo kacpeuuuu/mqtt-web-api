@@ -14,8 +14,8 @@ brokerAddress = str(os.getenv("BROKER_ADDRESS", ""))
 brokerPort = int(os.getenv("BROKER_PORT", 1883))
 brokerKeepAlive = int(os.getenv("KEEP_ALIVE", 60))
 mqttClient = MqttWrapper(brokerAddress, brokerPort, brokerKeepAlive)
+wsSleepTimer = 1 # how much time until the next message is passed to the /ws
 
-print(brokerKeepAlive)
 sensors = {}
 
 @asynccontextmanager
@@ -112,7 +112,7 @@ async def websocket_endpoint(websocket: WebSocket):
         while True:
             # get the latest sensor dictionary from wrapper
             mqttClient.get_report()
-            await asyncio.sleep(3) 
+            await asyncio.sleep(wsSleepTimer) 
             current_data = mqttClient.sensorMac 
             print(f"sensormac: {mqttClient.sensorMac}")
             
