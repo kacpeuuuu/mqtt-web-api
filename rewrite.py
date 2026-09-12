@@ -36,7 +36,7 @@ class Formatter:
 # Products
 
 class Device(ABC):
-    def __init__(self, topic: str, devicePin: int, isRunning: bool, durationLeft: int, pinState: int):
+    def __init__(self, topic: str, devicePin: int, isRunning: bool, durationLeft: int, pinState: int): #regular arguments
         self.topic = topic
         self.devicePin = devicePin
         self.isRunning = isRunning
@@ -56,7 +56,7 @@ class Device(ABC):
 
 class BlindsDevice(Device):
     def __init__(self, topic, devicePin, isRunning, durationLeft, pinState):
-        super().__init__(topic, devicePin, isRunning, durationLeft, pinState)
+        super().__init__(topic, devicePin, isRunning, durationLeft, pinState) #regular arguments
 
     def enableDevice(self):
         #włączanie 
