@@ -5,24 +5,32 @@ class Formatter:
 
     # msg.payload is bytes in paho mqtt
     @staticmethod
-    def formatMqttPayload(msg_payload: bytes) -> str:
+    def formatMqttPayloadToString(msg_payload: bytes) -> str:
         return msg_payload.decode("utf-8", errors="ignore")
+
+    @staticmethod
+    def formatMqttPayloadToJson(msg_payload: bytes) -> dict:
+        return json.loads(msg_payload.decode("utf-8", errors="ignore"))
 
     @staticmethod
     def getMacFromTopic(msg_topic: bytes) -> str:
         try: 
             return str(msg_topic[15:].decode("utf-8", errors="ignore"))
         except:
-            raise IndexError(f"the topic was shorter than expected: {}")
+            raise IndexError(f"the topic was shorter than expected: {msg_topic.decode("utf-8", errors="ignore")}")
         
     @staticmethod
-    def validateRequiredFields(msg_formatted: dict) -> bool:
+    def validateRequiredFields(msg_formatted: dict) -> None:
         _requiredFields = ("topic", "devicePin", "isRunning", "durationLeft", "pinState")
 
         missing_fields = []
-        for i in _requiredFields:
-            if i not in msg_formatted:
-                missing_fields.append(i)
+        for key in _requiredFields:
+            if key not in msg_formatted:
+                missing_fields.append(key)
+            # else:
+            #     if (msg_formatted[key] == None) or (msg_formatted[key] == ""):
+            #         raise ValueError("")
+            
 
         if missing_fields != []:
             raise ValueError(f"the payload was missing the required fields: {missing_fields}")
@@ -36,7 +44,7 @@ class Formatter:
 # Products
 
 class Device(ABC):
-    def __init__(self, topic: str, devicePin: int, isRunning: bool, durationLeft: int, pinState: int): #regular arguments
+    def __init__(self, topic: str, devicePin: int, isRunning: bool, durationLeft: int, pinState: int, **kwargs): #
         self.topic = topic
         self.devicePin = devicePin
         self.isRunning = isRunning
@@ -44,6 +52,8 @@ class Device(ABC):
         self.pinState = pinState
         self.showDevice = True     # if false sensor will not appear on the website
         self.lastMessageTime = 0      
+
+        self.extraConfig = kwargs
 
     @abstractmethod
     def enableDevice(self):
@@ -55,8 +65,8 @@ class Device(ABC):
     
 
 class BlindsDevice(Device):
-    def __init__(self, topic, devicePin, isRunning, durationLeft, pinState):
-        super().__init__(topic, devicePin, isRunning, durationLeft, pinState) #regular arguments
+    def __init__(self, topic: str, devicePin: int, isRunning: bool, durationLeft: int, pinState: int, **kwargs):
+        super().__init__(topic, devicePin, isRunning, durationLeft, pinState, **kwargs) 
 
     def enableDevice(self):
         #włączanie 
@@ -76,9 +86,10 @@ class DeviceFactory:
 
         if type.lower() in _deviceTypes:
             deviceObject = _deviceTypes[type.lower()]
-            str_payload = Formatter.formatMqttPayload(payload)
-            Formatter.hasRequiredFields(str_payload)    # it's a json in a str format
-            return deviceObject(**dict(str_payload))    # so to unpack it we need to convert it to dict
+            json_payload = Formatter.formatMqttPayloadToJson(payload)
+            Formatter.validateRequiredFields(json_payload)                #  json dict
+            return deviceObject(**json_payload)
+  
         else:
             raise KeyError
 
@@ -88,3 +99,7 @@ class StateManager:
     # is responsible for coupling Device type object with last message sent by it
     # if timed out, it should be hidden from display
     # state manager calls the factory to creare an unseen device
+
+
+class Transport:
+    
