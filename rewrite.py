@@ -123,6 +123,8 @@ class StateManager:
         # self.lastPayloadTopic = ""
         # self.lastPayloadTimestamp = 0.0
         
+#TODO: SKONCZ TO
+
     def processPayload(self, msg: mqtt.MQTTMessage) -> None:
 
         payload = Formatter.formatMqttPayloadToJson(msg.payload)
@@ -136,8 +138,9 @@ class StateManager:
             if device is not None:
                 device.updateData(payload)
             else:
-                self.deviceFactory.createSensor("blindsDevice", payload)
-            
+                newObject = self.deviceFactory.createSensor("blindsDevice", payload)
+                self.devicesDict[macAddress] = newObject
+
 
         except Exception as e:
             print(f"exception in: processPayload(), {e}")
@@ -145,19 +148,16 @@ class StateManager:
     def flagTimedOutDevices(self): # if timed out changes the showDevice property to false
         currentTime = time.time()
 
-        for key, value in self.devicesDict.items():
-            self._compareTime(currentTime, self.devicesDict[key])
-        
-    def _compareTime(timeout, time: float, device: Device):
-        if time-timeout >= device.lastMessageTime:
-            device.showDevice = False
+        for device in self.devicesDict.values():
+            if currentTime - device.lastMessageTime >= self.deviceTimeout:
+                device.showDevice = False
 
 
 
 #   TRANSPORT
 
 class MqttWrapper:
-    def __init__(self, address : str, port=1883, keepAlive=60):
+    def __init__(self, address : str, stateManager: StateManager, port=1883, keepAlive=60):
         self.address = address
         self.port = port
         self.keepAlive = keepAlive
@@ -173,7 +173,9 @@ class MqttWrapper:
         self.mqttClient.on_unsubscribe = self.on_unsubscribe
         
         #every message on "devicesDict/report/+" is routed to on_sensor_report 
-        self.mqttClient.message_callback_add("devicesDict/report/+", self.on_sensor_report) 
+        self.mqttClient.message_callback_add("devicesDict/report/+", self.on_sensor_report)
+
+        self.stateManager = stateManager
 
     def start(self) -> None:
         try:
@@ -198,9 +200,13 @@ class MqttWrapper:
         self.publish_on_topic("devicesDict/report", "Request: report", 1)
         print("Requested report from devicesDict.")
 
-    def on_sensor_report(self, client : mqtt.Client , userdata, msg : mqtt.MQTTMessage) -> mqtt.MQTTMessage:
+    def passPayloadToObject(self, payload: mqtt.MQTTMessage):
+        self.stateManager.processPayload(payload)
+
+    def on_sensor_report(self, client : mqtt.Client , userdata, msg : mqtt.MQTTMessage) -> None:
         print("payload passed to StateManager")
-        return msg
+        self.passPayloadToObject(msg)
+
 
     def publish_on_topic(self, topic: str, message: str, qos: int) -> None:
         self.mqttClient.publish(topic, message)
