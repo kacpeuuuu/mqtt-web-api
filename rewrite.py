@@ -87,10 +87,16 @@ class BlindsDevice(Device):
         pass
 
     def updateLastMessageTime(self, time):
-        pass
+        self.lastMessageTime = time
 
     def updateData(self, formattedPayload):
-        pass
+        self.topic = formattedPayload["topic"]
+        self.devicePin = formattedPayload["devicePin"]
+        self.isRunning = formattedPayload["isRunning"]
+        self.durationLeft = formattedPayload["durationLeft"]
+        self.pinState = formattedPayload["pinState"]
+
+        
  
 
 class DeviceFactory:
@@ -124,7 +130,6 @@ class StateManager:
         # self.lastPayloadTimestamp = 0.0
         
 #TODO: SKONCZ TO
-
     def processPayload(self, msg: mqtt.MQTTMessage) -> None:
 
         payload = Formatter.formatMqttPayloadToJson(msg.payload)
@@ -139,7 +144,9 @@ class StateManager:
                 device.updateData(payload)
             else:
                 newObject = self.deviceFactory.createSensor("blindsDevice", payload)
+                newObject.lastMessageTime = payloadTimestamp
                 self.devicesDict[macAddress] = newObject
+
 
 
         except Exception as e:
