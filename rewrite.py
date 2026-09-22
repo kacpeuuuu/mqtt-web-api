@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 import json
 import paho.mqtt.client as mqtt
 import time
+import queue
 
 class Formatter:
 
@@ -80,8 +81,7 @@ class BlindsDevice(Device):
         super().__init__(topic, devicePin, isRunning, durationLeft, pinState, **kwargs) 
 
     def enableDevice(self):
-        #włączanie 
-        pass
+        return '{"duration": 10000}'
 
     def disableDevice(self):
         pass
@@ -128,8 +128,7 @@ class StateManager:
         # self.lastPayload = {}               # dict version of bytes payload
         # self.lastPayloadTopic = ""
         # self.lastPayloadTimestamp = 0.0
-        
-#TODO: SKONCZ TO
+
     def processPayload(self, msg: mqtt.MQTTMessage) -> None:
 
         payload = Formatter.formatMqttPayloadToJson(msg.payload)
@@ -152,6 +151,10 @@ class StateManager:
         except Exception as e:
             print(f"exception in: processPayload(), {e}")
 
+    def getDevice(self, key: str):
+        if key in self.devicesDict:
+            return self.devicesDict[key]
+
     def flagTimedOutDevices(self): # if timed out changes the showDevice property to false
         currentTime = time.time()
 
@@ -161,8 +164,34 @@ class StateManager:
 
 
 
-#   TRANSPORT
+class Orchestrator:
+    #TODO: modify stateManager to return a Device-like object with a getter method
+    #TODO: create a way for orchestrator to read the command instance returned by the device's method of send_message 
+    #TODO: create Transport class, implement queue to not block cpu
+    #TODO: create Command class
+        
+    def __init__(self, stateManager: StateManager, transport: Transport):
+        self.stateManager = stateManager
+        self.transport = transport
 
+    def getDevice(self, key):
+        tempDevice = self.stateManager.getDevice(key)
+        command = tempDevice.disableDevice()
+        topic = tempDevice.topic
+        self.transport.sendMessage(command, topic)
+    
+
+#   TRANSPORT
+class Transport:
+    def __init__(self, mqttClient: MqttWrapper):
+        self.mqttClient = mqttClient
+
+    def sendMessage(self, command: str, topic: str):
+        self.mqttClient.publish_on_topic(command, topic)
+
+#TODO: probably needs modifying
+# the stateManager should not be here
+# orchestrator needs a way to store messages from mqttWrapper and pass them to stateManager
 class MqttWrapper:
     def __init__(self, address : str, stateManager: StateManager, port=1883, keepAlive=60):
         self.address = address

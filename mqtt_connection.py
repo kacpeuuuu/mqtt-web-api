@@ -1,169 +1,25 @@
-from abc import ABC, abstractmethod
-import json
 import paho.mqtt.client as mqtt
 import time
+import logging
+import json
 
-class Formatter:
-
-    # msg.payload is bytes in paho mqtt
-    @staticmethod
-    def formatMqttPayloadToString(msg_payload: bytes) -> str:
-        return msg_payload.decode("utf-8", errors="ignore")
-
-    @staticmethod
-    def formatMqttPayloadToJson(msg_payload: bytes) -> dict:
-        return json.loads(msg_payload.decode("utf-8", errors="ignore"))
-
-    @staticmethod       #this bases on the assumption that i will not change the length of /devices/report/{mac-address}
-    def getMacFromTopic(msg_topic: str) -> str:
-        try: 
-            return str(msg_topic[15:])
-        except:
-            raise IndexError(f"the topic was shorter than expected: {msg_topic}")
-        
-    @staticmethod
-    def validateRequiredFields(msg_formatted: dict) -> None:
-        _requiredFields = ("topic", "devicePin", "isRunning", "durationLeft", "pinState")
-
-        missing_fields = []
-        for key in _requiredFields:
-            if key not in msg_formatted:
-                missing_fields.append(key)
-            # else:
-            #     if (msg_formatted[key] == None) or (msg_formatted[key] == ""):
-            #         raise ValueError("")
-            
-
-        if missing_fields != []:
-            raise ValueError(f"the payload was missing the required fields: {missing_fields}")
-       
-        
-        
-# ConcreteCreators 
-
-
-
-# Products
-
-class Device(ABC):
-    def __init__(self, topic: str, devicePin: int, isRunning: bool, durationLeft: int, pinState: int, **kwargs): #
-        self.topic = topic
-        self.devicePin = devicePin
-        self.isRunning = isRunning
-        self.durationLeft = durationLeft
-        self.pinState = pinState
-        self.extraConfig = kwargs
-
-        self.showDevice = True     # if false sensor will not appear on the website
-        self.lastMessageTime = 0      
-
-
-    @abstractmethod
-    def enableDevice(self):
-        pass
-
-    @abstractmethod
-    def disableDevice(self):
-        pass
-
-    @abstractmethod
-    def updateLastMessageTime(self, time: float):
-        self.lastMessageTime = time
-
-    @abstractmethod
-    def updateData(self, formattedPayload: dict):
-        pass
-    
-
-class BlindsDevice(Device):
-    def __init__(self, topic: str, devicePin: int, isRunning: bool, durationLeft: int, pinState: int, **kwargs):
-        super().__init__(topic, devicePin, isRunning, durationLeft, pinState, **kwargs) 
-
-    def enableDevice(self):
-        #włączanie 
-        pass
-
-    def disableDevice(self):
-        pass
-
-    def updateLastMessageTime(self, time):
-        pass
-
-    def updateData(self, formattedPayload):
-        pass
- 
-
-class DeviceFactory:
-    # provides easy to use interface in creating and modifying Devices
-    def createSensor(self, type: str, formattedPayload: dict):
-        _deviceTypes = {
-            "blindsdevice": BlindsDevice
-        }
-
-        if type.lower() in _deviceTypes:
-            deviceObject = _deviceTypes[type.lower()]
-            return deviceObject(**formattedPayload)
-  
-        else:
-            raise KeyError("Factory could not find approperiate key for the sensor {type}")
-
-
-
-class StateManager:
-    # is responsible for coupling Device type object with last message sent by it
-    # if timed out, it should be hidden from display
-    # state manager calls the factory to creare an unseen device
-    def __init__(self, deviceFactory: DeviceFactory, deviceTimeout = 5):
-        self.deviceFactory = deviceFactory
-
-        self.devicesDict: dict[str, Device] = {}       # "{mac-address}": Device-like object
-        self.deviceTimeout = deviceTimeout
-        
-        # self.lastPayload = {}               # dict version of bytes payload
-        # self.lastPayloadTopic = ""
-        # self.lastPayloadTimestamp = 0.0
-        
-    def processPayload(self, msg: mqtt.MQTTMessage) -> None:
-
-        payload = Formatter.formatMqttPayloadToJson(msg.payload)
-        topic = msg.topic
-        macAddress = Formatter.getMacFromTopic(msg.topic)
-        payloadTimestamp = time.time()
-        try:
-            Formatter.validateRequiredFields(payload)
-
-            device = self.devicesDict.get(macAddress)
-            if device is not None:
-                device.updateData(payload)
-            else:
-                self.deviceFactory.createSensor("blindsDevice", payload)
-            
-
-        except Exception as e:
-            print(f"exception in: processPayload(), {e}")
-
-    def flagTimedOutDevices(self): # if timed out changes the showDevice property to false
-        currentTime = time.time()
-
-        for key, value in self.devicesDict.items():
-            self._compareTime(currentTime, self.devicesDict[key])
-        
-    def _compareTime(timeout, time: float, device: Device):
-        if time-timeout >= device.lastMessageTime:
-            device.showDevice = False
-
-
-
-#   TRANSPORT
-
+#TODO
+#MAKE HEARTBEAT 
 class MqttWrapper:
-    def __init__(self, address : str, port=1883, keepAlive=60):
+    def __init__(self, address : str, port=1883, keepAlive=60, sensorMessageTimeout=5):
         self.address = address
         self.port = port
         self.keepAlive = keepAlive
-        # self.isConnected = False      #not sure if needed
+        self.sensorMac = {}
+        self.sensorsTimedOut = []
+        self.sensorMessageTimestamp = {}
+        self.sensorMessageTimeout = sensorMessageTimeout
 
-        self.mqttClient = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+
+        self.isConnected = False
+
+        self.mqttClient = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2) 
+
 
         self.mqttClient.on_connect = self.on_connect
         self.mqttClient.on_connect_fail = self.on_connect_fail
@@ -172,45 +28,80 @@ class MqttWrapper:
         self.mqttClient.on_subscribe = self.on_subscribe
         self.mqttClient.on_unsubscribe = self.on_unsubscribe
         
-        #every message on "devicesDict/report/+" is routed to on_sensor_report 
-        self.mqttClient.message_callback_add("devicesDict/report/+", self.on_sensor_report) 
+        self.mqttClient.message_callback_add("devices/report/+", self.on_sensor_report)
 
-    def start(self) -> None:
+    def start(self):
         try:
             self.mqttClient.connect(self.address, self.port, self.keepAlive)
             self.mqttClient.loop_start()
-            # self.isConnected = True
+            self.isConnected = True
             print("MQTT client started and connected to broker at {}:{}".format(self.address, self.port))
         except Exception as e:
-            # self.isConnected = False
+            self.isConnected = False
             print(f"MQTT client could NOT connect: {e}")
 
-    def stop(self) -> None:
+    def stop(self):
         try:
             self.mqttClient.loop_stop()
             self.mqttClient.disconnect()
             print("MQTT client stopped.")
-            # self.isConnected = False
+            self.isConnected = False
         except Exception as e:
             print(f"Error during disconnecting: {e}")
 
-    def get_device_state(self) -> None:
-        self.publish_on_topic("devicesDict/report", "Request: report", 1)
-        print("Requested report from devicesDict.")
+    def get_report(self):
+        print("get_report()")
+        self.publish_on_topic("devices/report", "Request: report", 1)
+        self._remove_unresponsive_devices()
+        print("Requested report from devices.")
+        
+    def _get_report(self):
+        print("report_ready")
 
-    def on_sensor_report(self, client : mqtt.Client , userdata, msg : mqtt.MQTTMessage) -> mqtt.MQTTMessage:
-        print("payload passed to StateManager")
-        return msg
+    def on_sensor_report(self, client : mqtt.Client , userdata, msg : mqtt.MQTTMessage):
+        print(f"APPENDED SENSOR: \t{msg.topic} to the list")
+        sensor_mac_addr = str(msg.topic[15:])
+        decoded_payload = msg.payload.decode('utf-8', errors="ignore")
+        # decoded_payload = json.loads(decoded_payload)     i should probably merge sensormessagetimestamp with 
+        # decoded_payload["lastMessage"] = time.time()
+        # print(f"decoded_payload: {decoded_payload}")
+        self.sensorMac[sensor_mac_addr] = decoded_payload
+        print(self.sensorMac)
+        self.sensorMessageTimestamp[sensor_mac_addr] = time.time()
+        print(self.sensorMessageTimestamp)
+        self._get_report()
 
-    def publish_on_topic(self, topic: str, message: str, qos: int) -> None:
+
+    def _remove_unresponsive_devices(self):     
+        nowTime = time.time()
+        itemsToDelete = []
+        if self.sensorMessageTimestamp == {}:
+            pass
+        
+        for key,lastMessageTime in self.sensorMessageTimestamp.items():
+            if (nowTime - lastMessageTime) >= self.sensorMessageTimeout:
+                print(f"Found timed out sensor: {key}")
+                itemsToDelete.append(key)
+
+
+        for key in itemsToDelete:
+            if key in self.sensorMac:
+                self.sensorMac.pop(key)
+                self.sensorMessageTimestamp.pop(key)
+
+        itemsToDelete = []
+        
+
+
+    def publish_on_topic(self, topic: str, message: str, qos: int):
         self.mqttClient.publish(topic, message)
 
-    def on_connect(self, client : mqtt.Client, userdata, flags, reason_code, properties) -> None:   #paho.mqtt.reasoncodes.ReasonCode   #paho.mqtt.properties.Properties
-        self.subscribe_to_topic("devicesDict/report/+", 1) #subscribes with QoS 1 to the topic "devicesDict/report/+" to receive sensor reports
+    def on_connect(self, client : mqtt.Client, userdata, flags, reason_code, properties):   #paho.mqtt.reasoncodes.ReasonCode   #paho.mqtt.properties.Properties
+        self.subscribe_to_topic("devices/report/+", 1) #subscribes with QoS 1 to the topic "devices/report/+" to receive sensor reports
         print(f"Connected with result code {reason_code}")
 
     def on_connect_fail(self, client : mqtt.Client, userdata):
-        raise ConnectionError(f"Failed to connect to broker! {self.address}:{self.port}")
+        print(f"Failed to connect to broker! {self.address}:{self.port}")
 
     def on_publish(self, client : mqtt.Client, userdata, mid : int, reason_code, properties):
         print(f"\nmessage published - mid: {mid}\treason_code:{reason_code}")
