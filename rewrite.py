@@ -174,18 +174,21 @@ class Orchestrator:
         self.stateManager = stateManager
         self.transport = transport
 
-        self.setCallback()
+        self.setTransportCallback(stateManager.processPayload)
+        self.transport.start()
 
         
 
     def getDevice(self, key):
         tempDevice = self.stateManager.getDevice(key)
-        command = tempDevice.disableDevice()
+        command = tempDevice.enableDevice()
         topic = tempDevice.topic
         self.transport.sendMessage(command, topic)
 
-    def setCallback(self) -> None:
-        self.transport.ad
+    def setTransportCallback(self, function) -> None:
+        self.transport.setCallback(function)
+
+    
     
 
 #   TRANSPORT
@@ -197,9 +200,10 @@ class Transport:
         self.mqttClient.publish_on_topic(command, topic)
 
     def setCallback(self, callback) -> None:
-        self.mqttClient.addCallback(callback)
+        self.mqttClient.setCallback(callback)
 
-
+    def start(self):
+        self.mqttClient.start()
 
     
 
@@ -224,8 +228,8 @@ class MqttWrapper:
         self.mqttClient.on_subscribe = self.on_subscribe
         self.mqttClient.on_unsubscribe = self.on_unsubscribe
         
-        #every message on "devicesDict/report/+" is routed to on_sensor_report 
-        self.mqttClient.message_callback_add("devicesDict/report/+", self.on_sensor_report)
+        #every message on "devices/report/+" is routed to on_sensor_report 
+        self.mqttClient.message_callback_add("devices/report/+", self.on_sensor_report)
 
         self.callback = None
 
@@ -252,13 +256,15 @@ class MqttWrapper:
             print(f"Error during disconnecting: {e}")
 
     def get_device_state(self) -> None:
-        self.publish_on_topic("devicesDict/report", "Request: report", 1)
-        print("Requested report from devicesDict.")
+        self.publish_on_topic("devices/report", "Request: report", 1)
+        print("Requested report from devices.")
 
-    def passPayloadToCallback(self, payload: mqtt.MQTTMessage):    
+    def passPayloadToCallback(self, payload: mqtt.MQTTMessage) -> mqtt.MQTTMessage:   
+        print(f"RECIEVED A PAYLOAD: {payload}") 
         self.callback(payload)
 
     def on_sensor_report(self, client : mqtt.Client , userdata, msg : mqtt.MQTTMessage) -> None:
+        print("REPORT REPORT")
         if self.callback != None:
             print("payload passed to StateManager")
             self.passPayloadToCallback(msg)
@@ -266,11 +272,11 @@ class MqttWrapper:
             raise Exception("MqttWrapper: callback is None, before starting the client please set the callback")
 
 
-    def publish_on_topic(self, topic: str, message: str, qos: int) -> None:
+    def publish_on_topic(self, topic: str, message: str, qos=0) -> None:
         self.mqttClient.publish(topic, message)
 
     def on_connect(self, client : mqtt.Client, userdata, flags, reason_code, properties) -> None:   #paho.mqtt.reasoncodes.ReasonCode   #paho.mqtt.properties.Properties
-        self.subscribe_to_topic("devicesDict/report/+", 1) #subscribes with QoS 1 to the topic "devicesDict/report/+" to receive sensor reports
+        self.subscribe_to_topic("devices/report/+", 1) #subscribes with QoS 1 to the topic "devices/report/+" to receive sensor reports
         print(f"Connected with result code {reason_code}")
 
     def on_connect_fail(self, client : mqtt.Client, userdata):
