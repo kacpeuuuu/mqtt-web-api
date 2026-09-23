@@ -174,11 +174,18 @@ class Orchestrator:
         self.stateManager = stateManager
         self.transport = transport
 
+        self.setCallback()
+
+        
+
     def getDevice(self, key):
         tempDevice = self.stateManager.getDevice(key)
         command = tempDevice.disableDevice()
         topic = tempDevice.topic
         self.transport.sendMessage(command, topic)
+
+    def setCallback(self) -> None:
+        self.transport.ad
     
 
 #   TRANSPORT
@@ -186,14 +193,23 @@ class Transport:
     def __init__(self, mqttClient: MqttWrapper):
         self.mqttClient = mqttClient
 
-    def sendMessage(self, command: str, topic: str):
+    def sendMessage(self, command: str, topic: str) -> None:
         self.mqttClient.publish_on_topic(command, topic)
+
+    def setCallback(self, callback) -> None:
+        self.mqttClient.addCallback(callback)
+
+
+
+    
+
+    
 
 #TODO: probably needs modifying
 # the stateManager should not be here
 # orchestrator needs a way to store messages from mqttWrapper and pass them to stateManager
 class MqttWrapper:
-    def __init__(self, address : str, stateManager: StateManager, port=1883, keepAlive=60):
+    def __init__(self, address : str, port=1883, keepAlive=60):   #callback is the function passed from Orchestrator or Transport which processes the inbound messages
         self.address = address
         self.port = port
         self.keepAlive = keepAlive
@@ -211,7 +227,10 @@ class MqttWrapper:
         #every message on "devicesDict/report/+" is routed to on_sensor_report 
         self.mqttClient.message_callback_add("devicesDict/report/+", self.on_sensor_report)
 
-        self.stateManager = stateManager
+        self.callback = None
+
+    def setCallback(self, function):
+        self.callback = function
 
     def start(self) -> None:
         try:
@@ -236,12 +255,15 @@ class MqttWrapper:
         self.publish_on_topic("devicesDict/report", "Request: report", 1)
         print("Requested report from devicesDict.")
 
-    def passPayloadToObject(self, payload: mqtt.MQTTMessage):
-        self.stateManager.processPayload(payload)
+    def passPayloadToCallback(self, payload: mqtt.MQTTMessage):    
+        self.callback(payload)
 
     def on_sensor_report(self, client : mqtt.Client , userdata, msg : mqtt.MQTTMessage) -> None:
-        print("payload passed to StateManager")
-        self.passPayloadToObject(msg)
+        if self.callback != None:
+            print("payload passed to StateManager")
+            self.passPayloadToCallback(msg)
+        else:
+            raise Exception("MqttWrapper: callback is None, before starting the client please set the callback")
 
 
     def publish_on_topic(self, topic: str, message: str, qos: int) -> None:
