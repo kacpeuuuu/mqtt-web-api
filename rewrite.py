@@ -13,6 +13,8 @@ class Formatter:
 
     @staticmethod
     def formatMqttPayloadToJson(msg_payload: bytes) -> dict:
+        if msg_payload == b'':
+            raise Exception("recieved payload was None")
         return json.loads(msg_payload.decode("utf-8", errors="ignore"))
 
     @staticmethod       #this bases on the assumption that i will not change the length of /devices/report/{mac-address}
@@ -24,19 +26,19 @@ class Formatter:
         
     @staticmethod
     def validateRequiredFields(msg_formatted: dict) -> None:
-        _requiredFields = ("topic", "devicePin", "isRunning", "durationLeft", "pinState")
+        _requiredFields = ("devicePin", "isRunning", "durationLeft", "pinState") #deleted "topic"
 
-        missing_fields = []
+        missingFields = []
         for key in _requiredFields:
             if key not in msg_formatted:
-                missing_fields.append(key)
+                missingFields.append(key)
             # else:
             #     if (msg_formatted[key] == None) or (msg_formatted[key] == ""):
             #         raise ValueError("")
             
-
-        if missing_fields != []:
-            raise ValueError(f"the payload was missing the required fields: {missing_fields}")
+        
+        if missingFields != []:
+            raise ValueError(f"the payload was missing the required fields: {missingFields}")
        
         
         
@@ -47,7 +49,7 @@ class Formatter:
 # Products
 
 class Device(ABC):
-    def __init__(self, topic: str, devicePin: int, isRunning: bool, durationLeft: int, pinState: int, **kwargs): #
+    def __init__(self, devicePin: int, isRunning: bool, durationLeft: int, pinState: int, topic: str | None = None, **kwargs): #
         self.topic = topic
         self.devicePin = devicePin
         self.isRunning = isRunning
@@ -74,10 +76,14 @@ class Device(ABC):
     @abstractmethod
     def updateData(self, formattedPayload: dict):
         pass
+
+    @abstractmethod
+    def getData(self) -> dict:
+        pass
     
 
 class BlindsDevice(Device):
-    def __init__(self, topic: str, devicePin: int, isRunning: bool, durationLeft: int, pinState: int, **kwargs):
+    def __init__(self, devicePin: int, isRunning: bool, durationLeft: int, pinState: int, topic: str | None = None, **kwargs):
         super().__init__(topic, devicePin, isRunning, durationLeft, pinState, **kwargs) 
 
     def enableDevice(self):
@@ -90,13 +96,22 @@ class BlindsDevice(Device):
         self.lastMessageTime = time
 
     def updateData(self, formattedPayload):
-        self.topic = formattedPayload["topic"]
+        #self.topic = formattedPayload["topic"]
         self.devicePin = formattedPayload["devicePin"]
         self.isRunning = formattedPayload["isRunning"]
         self.durationLeft = formattedPayload["durationLeft"]
         self.pinState = formattedPayload["pinState"]
 
-        
+    def getData(self) -> dict:
+        result = {}
+        result["topic"] = self.topic
+        result["devicePin"] = self.devicePin
+        result["isRunning"] = self.isRunning
+        result["durationLeft"] = self.durationLeft
+        result["pinState"] = self.pinState
+        result["extraConfig"] = self.extraConfig
+
+        return result
  
 
 class DeviceFactory:
@@ -130,7 +145,7 @@ class StateManager:
         # self.lastPayloadTimestamp = 0.0
 
     def processPayload(self, msg: mqtt.MQTTMessage) -> None:
-
+        print(msg.payload)
         payload = Formatter.formatMqttPayloadToJson(msg.payload)
         topic = msg.topic
         macAddress = Formatter.getMacFromTopic(msg.topic)
@@ -235,6 +250,11 @@ class MqttWrapper:
 
     def setCallback(self, function):
         self.callback = function
+
+    def _emulateMessage(self, message: str):
+        tempMsg = mqtt.MQTTMessage(mid=9494, topic=bytes("devices/report/test-test", "utf-8"))
+        tempMsg.payload = bytes(message, "utf-8")
+        self.on_sensor_report(self.mqttClient, None, msg=tempMsg)
 
     def start(self) -> None:
         try:
