@@ -1,8 +1,9 @@
-from devices import *
-from utils import *
+from devices import Device, BlindsDevice, DeviceFactory
+from utils import Formatter
 import paho.mqtt.client as mqtt
+import json
 import time
-from network import *
+from network import Transport, MqttWrapper
 
 class StateManager:
     # is responsible for coupling Device type object with last message sent by it
@@ -24,25 +25,34 @@ class StateManager:
         topic = msg.topic
         macAddress = Formatter.getMacFromTopic(msg.topic)
         payloadTimestamp = time.time()
-        try:
-            Formatter.validateRequiredFields(payload)
+        # try:
+        Formatter.validateRequiredFields(payload)
 
-            device = self.devicesDict.get(macAddress)
-            if device is not None:
-                device.updateData(payload)
-            else:
-                newObject = self.deviceFactory.createSensor("blindsDevice", payload)
-                newObject.lastMessageTime = payloadTimestamp
-                self.devicesDict[macAddress] = newObject
+        device = self.devicesDict.get(macAddress)
+
+        if device is None:
+            newObject = self.deviceFactory.createSensor("blindsDevice", payload)
+            newObject.lastMessageTime = payloadTimestamp
+            newObject.topic = topic
+            self.devicesDict[macAddress] = newObject
+            
+        else:
+            device.updateData(payload)
+            device.updateLastMessageTime(payloadTimestamp)
+            if device.topic is None:
+                device.topic = topic
 
 
 
-        except Exception as e:
-            print(f"exception in: processPayload(), {e}")
+        # except Exception as e:
+        #     print(f"exception in: processPayload(), {e}")
 
     def getDevice(self, key: str):
         if key in self.devicesDict:
             return self.devicesDict[key]
+
+    def getDeviceDict(self):
+        return self.devicesDict
 
     def flagTimedOutDevices(self): # if timed out changes the showDevice property to false
         currentTime = time.time()
@@ -66,7 +76,17 @@ class Orchestrator:
         self.setTransportCallback(stateManager.processPayload)
         self.transport.start()
 
-        
+    def getReport(self):
+        self.transport.getReport()
+
+    def getDevicesToJson(self):
+        response = {}
+        devicesDict = self.stateManager.getDeviceDict()
+        for device in devicesDict.values():
+            device_data = device.getData()
+            response[device.topic] = device_data
+
+        return json.dumps(response) 
 
     def getDevice(self, key):
         tempDevice = self.stateManager.getDevice(key)

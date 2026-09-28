@@ -36,7 +36,7 @@ class Device(ABC):
 
 class BlindsDevice(Device):
     def __init__(self, devicePin: int, isRunning: bool, durationLeft: int, pinState: int, topic: str | None = None, **kwargs):
-        super().__init__(topic, devicePin, isRunning, durationLeft, pinState, **kwargs) 
+        super().__init__(topic=topic, devicePin=devicePin, isRunning=isRunning, durationLeft=durationLeft, pinState=pinState, **kwargs) 
 
     def enableDevice(self):
         return '{"duration": 10000}'
@@ -61,7 +61,10 @@ class BlindsDevice(Device):
         result["isRunning"] = self.isRunning
         result["durationLeft"] = self.durationLeft
         result["pinState"] = self.pinState
+        result["showDevice"] = self.showDevice
+        result["lastMessageTime"] = self.lastMessageTime
         result["extraConfig"] = self.extraConfig
+
 
         return result
  

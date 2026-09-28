@@ -1,23 +1,5 @@
 import paho.mqtt.client as mqtt
-
-
-#   TRANSPORT
-class Transport:
-    def __init__(self, mqttClient: MqttWrapper):
-        self.mqttClient = mqttClient
-
-    def sendMessage(self, command: str, topic: str) -> None:
-        self.mqttClient.publish_on_topic(command, topic)
-
-    def setCallback(self, callback) -> None:
-        self.mqttClient.setCallback(callback)
-
-    def start(self):
-        self.mqttClient.start()
-
-    
-
-    
+   
 
 #TODO: probably needs modifying
 # the stateManager should not be here
@@ -52,23 +34,22 @@ class MqttWrapper:
         self.on_sensor_report(self.mqttClient, None, msg=tempMsg)
 
     def start(self) -> None:
-        try:
-            self.mqttClient.connect(self.address, self.port, self.keepAlive)
-            self.mqttClient.loop_start()
-            # self.isConnected = True
-            print("MQTT client started and connected to broker at {}:{}".format(self.address, self.port))
-        except Exception as e:
-            # self.isConnected = False
-            print(f"MQTT client could NOT connect: {e}")
+        # try:
+        self.mqttClient.connect(self.address, self.port, self.keepAlive)
+        self.mqttClient.loop_start()                                        # self.isConnected = True
+        print("MQTT client started and connected to broker at {}:{}".format(self.address, self.port))
+        # except Exception as e:
+        #     # self.isConnected = False
+        #     print(f"MQTT client could NOT connect: {e}")
 
     def stop(self) -> None:
-        try:
-            self.mqttClient.loop_stop()
-            self.mqttClient.disconnect()
-            print("MQTT client stopped.")
+        # try:
+        self.mqttClient.loop_stop()
+        self.mqttClient.disconnect()
+        print("MQTT client stopped.")
             # self.isConnected = False
-        except Exception as e:
-            print(f"Error during disconnecting: {e}")
+        # except Exception as e:
+        #     print(f"Error during disconnecting: {e}")
 
     def get_device_state(self) -> None:
         self.publish_on_topic("devices/report", "Request: report", 1)
@@ -83,8 +64,8 @@ class MqttWrapper:
         if self.callback != None:
             print("payload passed to StateManager")
             self.passPayloadToCallback(msg)
-        else:
-            raise Exception("MqttWrapper: callback is None, before starting the client please set the callback")
+        # else:
+        #     raise Exception("MqttWrapper: callback is None, before starting the client please set the callback")
 
 
     def publish_on_topic(self, topic: str, message: str, qos=0) -> None:
@@ -121,5 +102,21 @@ class MqttWrapper:
         print(f"client: {client}, userdata: {userdata}, disconnect_flags: {disconnect_flags}, reason_code: {reason_code}, properties: {properties}")
 
 
+#   TRANSPORT
+class Transport:
+    def __init__(self, mqttClient: MqttWrapper):
+        self.mqttClient = mqttClient
+
+    def sendMessage(self, command: str, topic: str) -> None:
+        self.mqttClient.publish_on_topic(topic, command)
+
+    def setCallback(self, callback) -> None:
+        self.mqttClient.setCallback(callback)
+
+    def start(self):
+        self.mqttClient.start()
+
+    def getReport(self):
+        self.mqttClient.publish_on_topic("devices/report", "Report requested", "1")
 
     

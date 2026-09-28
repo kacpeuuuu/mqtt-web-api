@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, WebSocket
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
-from mqtt_connection import MqttWrapper
+from network import *
 from fastapi import WebSocketDisconnect
 #from enum import Enum
 import os
