@@ -44,9 +44,6 @@ class BlindsDevice(Device):
     def disableDevice(self):
         pass
 
-    def updateLastMessageTime(self, time):
-        self.lastMessageTime = time
-
     def updateData(self, formattedPayload):
         #self.topic = formattedPayload["topic"]
         self.devicePin = formattedPayload["devicePin"]
