@@ -21,9 +21,6 @@ class Device(ABC):
     def disableDevice(self):
         pass
 
-    @abstractmethod
-    def updateLastMessageTime(self, time: float):
-        self.lastMessageTime = time
 
     @abstractmethod
     def updateData(self, formattedPayload: dict):
@@ -33,6 +30,8 @@ class Device(ABC):
     def getData(self) -> dict:
         pass
     
+    def updateLastMessageTime(self, time: float):
+        self.lastMessageTime = time
 
 class BlindsDevice(Device):
     def __init__(self, devicePin: int, isRunning: bool, durationLeft: int, pinState: int, topic: str | None = None, **kwargs):

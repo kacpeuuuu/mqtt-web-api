@@ -50,6 +50,8 @@ class StateManager:
     def getDevice(self, key: str):
         if key in self.devicesDict:
             return self.devicesDict[key]
+        else:
+            return None
 
     def getDeviceDict(self):
         return self.devicesDict
@@ -86,9 +88,22 @@ class Orchestrator:
             device_data = device.getData()
             response[device.topic] = device_data
 
-        return json.dumps(response) 
+        if response == {}:
+            return None
+        else:
+            return response
+        
 
-    def getDevice(self, key):
+    def getDeviceJson(self, key: str):
+        response = {}
+        device = self.stateManager.getDevice(key)
+        if device != None:
+            device_data = device.getData()
+            response[device.topic] = device_data
+            return response
+        return None
+
+    def enableDevice(self, key):
         tempDevice = self.stateManager.getDevice(key)
         command = tempDevice.enableDevice()
         topic = tempDevice.topic

@@ -5,7 +5,7 @@ from network import Transport, MqttWrapper
 
 import asyncio
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request, WebSocket
+from fastapi import FastAPI, Request, WebSocket, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi import WebSocketDisconnect
@@ -44,12 +44,24 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 async def get_devices(request: Request):
     print(stateManager.getDeviceDict())
     orchestrator.getReport()
-    await asyncio.sleep(0.5)
+    await asyncio.sleep(0.3)
 
     devices_data = orchestrator.getDevicesToJson()
-    return {"StateManager": devices_data}
+    print(devices_data)
+    if devices_data is None:
+        raise HTTPException(status_code=404, detail="Devices not found")
+    return {"DevicesList": devices_data}
 
+@app.get("/devices/{device_mac}")
+async def get_device(device_mac: str):
+    orchestrator.getReport()
+    await asyncio.sleep(0.3)
 
+    device_data = orchestrator.getDeviceJson(device_mac)
+    if device_data is None:
+        raise HTTPException(status_code=404, details="Device not found")
+
+    return device_data
 
 
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
