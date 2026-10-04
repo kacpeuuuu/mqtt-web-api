@@ -1,10 +1,10 @@
-### MQTT Web API
+# MQTT Web API
 
 ## A simple API for connecting a web application with an MQTT broker.
 
-# The main idea of this project is to make it possible to communicate with MQTT devices from a web application using HTTP and WebSockets.
+### The main idea of this project is to make it possible to communicate with MQTT devices from a web application using HTTP and WebSockets.
 
-# Features
+### Features
 Connects to an MQTT broker
 Subscribe to MQTT topics
 Publish messages to MQTT topics
@@ -14,7 +14,7 @@ Configuration using environment variables
 Docker support
 Built with FastAPI
 
-# Requirements:
+### Requirements:
 Python 3.12
 FastAPI
 Uvicorn
@@ -24,7 +24,7 @@ Pydantic
 Docker
 
 
-## How it works
+### How it works
 
 The application works as a bridge between a web application and an MQTT broker.
 
