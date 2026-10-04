@@ -22,29 +22,14 @@ Paho MQTT
 WebSockets
 Pydantic
 Docker
-How it works
+
+
+## How it works
 
 The application works as a bridge between a web application and an MQTT broker.
-`
-Web Application
-       |
-       | HTTP / WebSocket
-       v
-   MQTT Web API
-       |
-       | MQTT
-       v
-   MQTT Broker
-       |
-       v
-  MQTT Devices
-`
+
+Web Application  -> HTTP / WebSocket -> MQTT Web API -> MQTT Broker -> MQTT Devices
+
 The API connects to the MQTT broker and can handle messages between the broker and web clients.
 
-Requirements
-
-Before running the project, you need:
-Docker
-Python 3.12 or newer
-An MQTT broker, for example Mosquitto
-Git
+Requirements:
