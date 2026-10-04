@@ -1,8 +1,10 @@
 from abc import ABC, abstractmethod
 
+
 class Device(ABC):
-    def __init__(self, devicePin: int, isRunning: bool, durationLeft: int, pinState: int, topic: str | None = None, **kwargs): #
+    def __init__(self, devicePin: int, isRunning: bool, durationLeft: int, pinState: int, uid: str, topic: str | None = None, **kwargs): #
         self.topic = topic
+        self.uid = uid
         self.devicePin = devicePin
         self.isRunning = isRunning
         self.durationLeft = durationLeft
@@ -29,7 +31,7 @@ class Device(ABC):
     @abstractmethod
     def getData(self) -> dict:
         pass
-    
+
     def updateLastMessageTime(self, time: float):
         self.lastMessageTime = time
 
@@ -53,6 +55,7 @@ class BlindsDevice(Device):
     def getData(self) -> dict:
         result = {}
         result["topic"] = self.topic
+        result["uid"] = self.uid
         result["devicePin"] = self.devicePin
         result["isRunning"] = self.isRunning
         result["durationLeft"] = self.durationLeft

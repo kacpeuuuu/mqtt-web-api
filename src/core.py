@@ -27,7 +27,7 @@ class StateManager:
         payloadTimestamp = time.time()
         # try:
         Formatter.validateRequiredFields(payload)
-
+        payload["uid"] = macAddress
         device = self.devicesDict.get(macAddress)
 
         if device is None:
@@ -86,7 +86,7 @@ class Orchestrator:
         devicesDict = self.stateManager.getDeviceDict()
         for device in devicesDict.values():
             device_data = device.getData()
-            response[device.topic] = device_data
+            response[Formatter.getMacFromTopic(device.topic)] = device_data
 
         if response == {}:
             return None
@@ -99,7 +99,7 @@ class Orchestrator:
         device = self.stateManager.getDevice(key)
         if device != None:
             device_data = device.getData()
-            response[device.topic] = device_data
+            response[Formatter.getMacFromTopic(device.topic)] = device_data
             return response
         return None
 
