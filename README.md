@@ -25,7 +25,7 @@ Docker
 How it works
 
 The application works as a bridge between a web application and an MQTT broker.
-
+`
 Web Application
        |
        | HTTP / WebSocket
@@ -38,7 +38,7 @@ Web Application
        |
        v
   MQTT Devices
-
+`
 The API connects to the MQTT broker and can handle messages between the broker and web clients.
 
 Requirements
